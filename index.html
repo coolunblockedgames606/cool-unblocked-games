@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Popfront: Sky Siege</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1b2d;--panel2:#12253b;--line:#24425f;--text:#eef7ff;--muted:#9db2c8;--accent:#4dd7ff;--gold:#ffd45c;--good:#68e08a;--danger:#ff6f78}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 0,#15304d 0,#07111f 55%);color:var(--text);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column}
+header{height:64px;background:rgba(5,12,23,.92);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 18px;z-index:3}
+.logo{font-weight:900;letter-spacing:.5px;font-size:20px}.logo span{color:var(--accent)}
+.stat{background:#0b1829;border:1px solid var(--line);padding:8px 13px;border-radius:10px;font-weight:800}.stat small{color:var(--muted);font-weight:600;margin-right:6px}
+#main{flex:1;display:grid;grid-template-columns:240px 1fr 280px;min-height:0}
+aside{background:rgba(7,17,31,.9);border-right:1px solid var(--line);padding:12px;overflow:auto}.right{border-right:0;border-left:1px solid var(--line)}
+h3{margin:7px 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;cursor:pointer;font-weight:750}
+button:hover{filter:brightness(1.15)}button:disabled{opacity:.45;cursor:not-allowed}
+.towerCard{width:100%;text-align:left;margin:6px 0;display:grid;grid-template-columns:42px 1fr auto;gap:9px;align-items:center}
+.icon{width:42px;height:42px;border-radius:9px;display:grid;place-items:center;background:#1a3550;font-size:23px}
+.towerCard b{font-size:13px}.towerCard small{color:var(--muted);display:block;margin-top:2px}.cost{color:var(--gold);font-size:12px}
+#gameWrap{position:relative;min-width:0;min-height:0;display:grid;place-items:center;background:#0b1b28}
+canvas{width:100%;height:100%;display:block;cursor:crosshair}
+#overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(2,7,13,.75);backdrop-filter:blur(5px);z-index:5}
+.modal{width:min(620px,90%);background:#0c1a2c;border:1px solid #31506f;border-radius:18px;box-shadow:0 20px 80px #0009;padding:26px;text-align:center}
+.modal h1{font-size:36px;margin:0 0 7px}.modal p{color:var(--muted);line-height:1.5}.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.choice{text-align:left;padding:14px}.choice strong{display:block}.choice span{color:var(--muted);font-size:12px}
+#topBtns{margin-left:auto;display:flex;gap:8px}
+#selected{display:none}.selTitle{font-size:18px;font-weight:900;margin-bottom:4px}.desc{color:var(--muted);font-size:12px;line-height:1.4}
+.path{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#0a1727}.path b{font-size:12px}.upgrade{width:100%;margin-top:7px;text-align:left}.upgrade em{float:right;color:var(--gold);font-style:normal}
+#tip{position:absolute;left:14px;bottom:14px;background:#071321dd;border:1px solid var(--line);padding:7px 10px;border-radius:8px;color:var(--muted);font-size:11px;pointer-events:none}
+#toast{position:absolute;top:15px;left:50%;transform:translateX(-50%);background:#081523ee;border:1px solid var(--line);padding:9px 14px;border-radius:9px;opacity:0;transition:.2s;pointer-events:none}
+@media(max-width:950px){#main{grid-template-columns:190px 1fr 210px}.towerCard{grid-template-columns:35px 1fr}.icon{width:35px;height:35px}.cost{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="logo">POPFRONT <span>SKY SIEGE</span></div>
+  <div class="stat"><small>Credits</small><span id="money">$650</span></div>
+  <div class="stat"><small>Base</small><span id="lives">100</span></div>
+  <div class="stat"><small>Wave</small><span id="wave">0</span></div>
+  <div id="topBtns"><button id="pause">Ⅱ</button><button id="speed">1×</button><button id="restart">↻</button></div>
+</header>
+<div id="main">
+<aside>
+<h3>Defenders</h3>
+<div id="towerList"></div>
+<h3>Controls</h3>
+<div class="desc">Click a defender, then click a legal spot on the map. Click placed defenders to upgrade or sell.</div>
+</aside>
+<div id="gameWrap">
+<canvas id="game"></canvas><div id="toast"></div><div id="tip">Build defenses before launching the next wave.</div>
+<div id="overlay">
+ <div class="modal">
+  <h1>POPFRONT</h1>
+  <p>A fast, original tower-defense game inspired by the classic lane-defense formula. Build sky defenders, stop raiders, earn credits, and survive escalating waves.</p>
+  <div class="choices">
+   <button class="choice" data-map="meadow"><strong>Meadow Run</strong><span>Balanced lanes • Normal</span></button>
+   <button class="choice" data-map="canyon"><strong>Red Canyon</strong><span>Long track • More turns</span></button>
+   <button class="choice" data-map="harbor"><strong>Neon Harbor</strong><span>Short track • Fast raiders</span></button>
+  </div>
+ </div>
+</div>
+</div>
+<aside class="right">
+<div id="selected">
+  <div class="selTitle" id="selName"></div><div class="desc" id="selDesc"></div>
+  <div class="path"><b>UPGRADE PATH A</b><button class="upgrade" id="upA"></button></div>
+  <div class="path"><b>UPGRADE PATH B</b><button class="upgrade" id="upB"></button></div>
+  <button id="sell" style="width:100%;margin-top:10px">Sell</button>
+</div>
+<div id="wavePanel">
+<h3>Wave Control</h3>
+<button id="startWave" style="width:100%;font-size:15px">Launch Wave 1</button>
+<div class="desc" style="margin-top:10px">Every wave introduces tougher raiders. Boss waves appear every 10 rounds.</div>
+</div>
+<h3>Map Rules</h3><div class="desc">You can place defenders on the open terrain, but not on the road. Projectiles target the nearest valid enemy.</div>
+</aside>
+</div>
+</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const moneyEl=document.getElementById('money'),livesEl=document.getElementById('lives'),waveEl=document.getElementById('wave');
+const overlay=document.getElementById('overlay'),toastEl=document.getElementById('toast');
+let W=900,H=600,dpr=1,mapKey='meadow',money=650,lives=100,wave=0,running=false,paused=false,speed=1,selectedTower=null,placing=null,towers=[],enemies=[],shots=[],particles=[],last=0,spawnLeft=0,spawnTimer=0,spawnTotal=0;
+const maps={
+ meadow:{bg:'#173b2a',road:'#bca46a',pts:[[0,.62],[.16,.62],[.16,.28],[.39,.28],[.39,.74],[.62,.74],[.62,.43],[.82,.43],[.82,.67],[1,.67]]},
+ canyon:{bg:'#4a2c23',road:'#c9a47d',pts:[[0,.3],[.18,.3],[.18,.72],[.37,.72],[.37,.18],[.62,.18],[.62,.58],[.79,.58],[.79,.36],[1,.36]]},
+ harbor:{bg:'#123244',road:'#7997a3',pts:[[0,.78],[.12,.78],[.12,.42],[.3,.42],[.3,.75],[.5,.75],[.5,.22],[.72,.22],[.72,.58],[.88,.58],[.88,.38],[1,.38]]}
+};
+const defs={
+ scout:{name:'Trail Scout',icon:'🛰️',cost:120,range:125,rate:.65,damage:10,shots:1,bullet:430,color:'#68d7ff',desc:'Fast single-target interceptor.',a:[['Precision Optics',90],['Twin Cannons',150],['Longshot Core',260]],b:[['Quick Cycle',80],['Burst Engine',145],['Overdrive',250]]},
+ ember:{name:'Ember Caster',icon:'🔥',cost:210,range:105,rate:1.15,damage:25,shots:1,bullet:300,color:'#ff8a55',splash:34,desc:'Lobs hot plasma that damages nearby raiders.',a:[['Hot Shells',110],['Magma Burst',190],['Solar Payload',330]],b:[['Rapid Fuse',95],['Double Cast',180],['Volcanic Rhythm',310]]},
+ frost:{name:'Cryo Warden',icon:'❄️',cost:260,range:115,rate:1.25,damage:14,shots:1,bullet:380,color:'#8be8ff',slow:.45,desc:'Slows raiders with chilling bolts.',a:[['Deep Freeze',120],['Ice Field',210],['Absolute Zero',360]],b:[['Cold Snap',100],['Shard Volley',190],['Glacier Storm',340]]},
+ rail:{name:'Rail Gunner',icon:'⚡',cost:420,range:180,rate:1.65,damage:75,shots:1,bullet:700,color:'#d6b7ff',pierce:2,desc:'Heavy long-range armor breaker.',a:[['Charged Rail',180],['Mag-Rail',320],['Thunder Lance',560]],b:[['Stabilizer',160],['Piercing Coil',300],['Hyper Coil',520]]}
+};
+function resize(){const r=canvas.getBoundingClientRect();dpr=devicePixelRatio||1;W=r.width;H=r.height;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+function pathPx(){return maps[mapKey].pts.map(p=>({x:p[0]*W,y:p[1]*H}))}
+function drawRoad(){const pts=pathPx();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#0005';ctx.lineWidth=58;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.strokeStyle=maps[mapKey].road;ctx.lineWidth=48;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.strokeStyle='#ffffff35';ctx.lineWidth=2;ctx.setLineDash([12,12]);ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.setLineDash([])}
+function nearRoad(x,y){const pts=pathPx();for(let i=0;i<pts.length-1;i++){let a=pts[i],b=pts[i+1],dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy))),px=a.x+t*dx,py=a.y+t*dy;if(Math.hypot(x-px,y-py)<34)return true}return false}
+function renderTowers(){towers.forEach(t=>{ctx.beginPath();ctx.arc(t.x,t.y,t.range,0,Math.PI*2);ctx.fillStyle=selectedTower===t?'#6fdfff12':'#00000000';ctx.fill();ctx.strokeStyle=selectedTower===t?'#6fdfff77':'#ffffff10';ctx.stroke();ctx.beginPath();ctx.arc(t.x,t.y,18,0,Math.PI*2);ctx.fillStyle=t.def.color;ctx.fill();ctx.strokeStyle='#06111d';ctx.lineWidth=3;ctx.stroke();ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(t.def.icon,t.x,t.y)})}
+function drawEnemy(e){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(Math.atan2(e.vy,e.vx));ctx.fillStyle=e.color;ctx.strokeStyle='#06111d';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(-17,-11,34,22,11);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(7,-4,3,0,7);ctx.fill();ctx.restore();ctx.fillStyle='#0008';ctx.fillRect(e.x-18,e.y-19,36,4);ctx.fillStyle='#69e68a';ctx.fillRect(e.x-18,e.y-19,36*Math.max(0,e.hp/e.max),4)}
+function spawnEnemy(){let pts=pathPx(),boss=wave%10===0&&spawnLeft===spawnTotal,hp=35+wave*11+(boss?wave*20:0),spd=48+wave*1.6+(mapKey==='harbor'?12:0);enemies.push({x:pts[0].x,y:pts[0].y,seg:0,hp:hp,max:hp,spd:spd*(boss?.62:1),vx:0,vy:0,color:boss?'#ffcf4d':(wave%5===0?'#ff6874':'#a6e7ff'),boss})}
+function enemyStep(e,dt){let pts=pathPx();if(e.seg>=pts.length-1){e.dead=true;lives-=e.boss?12:2;return}let target=pts[e.seg+1],dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy),s=e.spd*(e.slow||1);if(d<3){e.seg++;return}e.vx=dx/d*s;e.vy=dy/d*s;e.x+=e.vx*dt;e.y+=e.vy*dt}
+function fire(t,e){shots.push({x:t.x,y:t.y,target:e,damage:t.damage,spd:t.def.bullet,splash:t.def.splash||0,pierce:t.def.pierce||0,color:t.def.color})}
+function update(dt){if(!running||paused)return;if(spawnLeft>0){spawnTimer-=dt;if(spawnTimer<=0){spawnEnemy();spawnLeft--;spawnTimer=Math.max(.18,.7-wave*.018)}}towers.forEach(t=>{t.cool-=dt;if(t.cool<=0){let target=enemies.filter(e=>!e.dead&&Math.hypot(e.x-t.x,e.y-t.y)<=t.range).sort((a,b)=>b.seg-a.seg||b.x-a.x)[0];if(target){for(let i=0;i<t.shots;i++)fire(t,target);t.cool=t.rate}}});enemies.forEach(e=>{if(!e.dead){e.slow=Math.max(0,(e.slow||0)-dt);enemyStep(e,dt)}});shots.forEach(s=>{if(!s.target||s.target.dead){s.dead=true;return}let dx=s.target.x-s.x,dy=s.target.y-s.y,d=Math.hypot(dx,dy),step=s.spd*dt;if(d<=step){s.target.hp-=s.damage;s.dead=true;if(s.splash)enemies.forEach(e=>{if(e!==s.target&&!e.dead&&Math.hypot(e.x-s.target.x,e.y-s.target.y)<s.splash)e.hp-=s.damage*.45});if(s.pierce>0)enemies.filter(e=>!e.dead&&e!==s.target&&Math.hypot(e.x-s.target.x,e.y-s.target.y)<24).slice(0,s.pierce).forEach(e=>e.hp-=s.damage*.55)}else{s.x+=dx/d*step;s.y+=dy/d*step}});enemies.forEach(e=>{if(e.hp<=0&&!e.dead){e.dead=true;money+=e.boss?140+wave*4:8+Math.floor(wave*.8);for(let i=0;i<7;i++)particles.push({x:e.x,y:e.y,vx:(Math.random()-.5)*90,vy:(Math.random()-.5)*90,life:.5,color:e.color})}});enemies=enemies.filter(e=>!e.dead);shots=shots.filter(s=>!s.dead);particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt});particles=particles.filter(p=>p.life>0);if(spawnLeft===0&&enemies.length===0&&spawnTotal>0){running=false}if(lives<=0){running=false;overlay.style.display='grid';overlay.querySelector('.modal').innerHTML='<h1>BASE LOST</h1><p>You survived to wave '+wave+'. Restart to try a new defense.</p><button onclick="location.reload()">Restart</button>'}updateUI()}
+function draw(){ctx.fillStyle=maps[mapKey].bg;ctx.fillRect(0,0,W,H);ctx.globalAlpha=.12;for(let i=0;i<80;i++){ctx.fillStyle=i%2?'#fff':'#000';ctx.fillRect((i*83)%W,(i*47)%H,2,2)}ctx.globalAlpha=1;drawRoad();renderTowers();enemies.forEach(drawEnemy);shots.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,4,0,7);ctx.fillStyle=s.color;ctx.fill()});particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3)});ctx.globalAlpha=1;if(placing){ctx.beginPath();ctx.arc(mouse.x,mouse.y,placing.range,0,7);ctx.fillStyle='#6fdfff12';ctx.fill();ctx.strokeStyle=nearRoad(mouse.x,mouse.y)?'#ff6878':'#6fdfff';ctx.stroke()}}
+function loop(ts){let dt=Math.min(.04,(ts-last)/1000)*speed;last=ts;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);let mouse={x:0,y:0};canvas.addEventListener('mousemove',e=>{let r=canvas.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top});canvas.addEventListener('click',e=>{let r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(placing){let def=defs[placing],valid=!nearRoad(x,y)&&money>=def.cost&&!towers.some(t=>Math.hypot(t.x-x,t.y-y)<35);if(valid){money-=def.cost;towers.push({x,y,def,damage:def.damage,range:def.range,rate:def.rate,cool:0,shots:def.shots,level:0,spent:def.cost});placing=null;updateUI();toast('Defender deployed')}else toast(money<def.cost?'Not enough credits':'That spot is blocked');return}selectedTower=towers.slice().reverse().find(t=>Math.hypot(t.x-x,t.y-y)<20)||null;placing=null;updateSelected()});function toast(s){toastEl.textContent=s;toastEl.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>toastEl.style.opacity=0,1300)}function updateUI(){moneyEl.textContent='$'+Math.floor(money);livesEl.textContent=lives;waveEl.textContent=wave;document.getElementById('startWave').textContent=running?'Wave '+wave+' in progress':'Launch Wave '+(wave+1)}function updateSelected(){const box=document.getElementById('selected');if(!selectedTower){box.style.display='none';return}box.style.display='block';let t=selectedTower,d=t.def;document.getElementById('selName').textContent=d.name+' • Lv '+t.level;document.getElementById('selDesc').textContent=d.desc+' Damage '+Math.round(t.damage)+' • Range '+Math.round(t.range);let a=d.a[t.level]||['MAXED',0],b=d.b[t.level]||['MAXED',0];document.getElementById('upA').innerHTML=a[0]+' <em>'+(a[0]==='MAXED'?'—':'$'+a[1])+'</em>';document.getElementById('upB').innerHTML=b[0]+' <em>'+(b[0]==='MAXED'?'—':'$'+b[1])+'</em>'}function doUpgrade(path){if(!selectedTower)return;let t=selectedTower,d=t.def,arr=path==='a'?d.a:d.b,idx=t.level;if(idx>=3){toast('Path maxed');return}let price=arr[idx][1];if(money<price){toast('Not enough credits');return}money-=price;t.spent+=price;t.level++;if(path==='a'){t.damage*=1.32;t.range+=10;t.shots+=idx===1?1:0}else{t.rate*=.78;t.def.bullet*=1.08;if(idx===1)t.shots+=1;if(idx===2)t.damage*=1.35}updateSelected();updateUI()}document.getElementById('upA').onclick=()=>doUpgrade('a');document.getElementById('upB').onclick=()=>doUpgrade('b');document.getElementById('sell').onclick=()=>{if(!selectedTower)return;money+=Math.floor(selectedTower.spent*.7);towers=towers.filter(t=>t!==selectedTower);selectedTower=null;updateSelected();updateUI()};document.getElementById('startWave').onclick=()=>{if(running)return;wave++;spawnTotal=5+wave*2+(wave%10===0?1:0);spawnLeft=spawnTotal;spawnTimer=.1;running=true;toast(wave%10===0?'BOSS WAVE':'Wave '+wave+' incoming!');updateUI()};document.getElementById('pause').onclick=()=>{paused=!paused;document.getElementById('pause').textContent=paused?'▶':'Ⅱ'};document.getElementById('speed').onclick=()=>{speed=speed===1?2:speed===2?.5:1;document.getElementById('speed').textContent=speed+'×'};document.getElementById('restart').onclick=()=>location.reload();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{mapKey=b.dataset.map;overlay.style.display='none';buildList();toast(mapKey==='harbor'?'Fast lanes selected':'Map selected')});function buildList(){let el=document.getElementById('towerList');el.innerHTML='';Object.entries(defs).forEach(([k,d])=>{let b=document.createElement('button');b.className='towerCard';b.innerHTML='<span class="icon">'+d.icon+'</span><span><b>'+d.name+'</b><small>'+d.desc+'</small></span><span class="cost">$'+d.cost+'</span>';b.onclick=()=>{placing=k;selectedTower=null;updateSelected();toast('Click an open area to deploy '+d.name)};el.appendChild(b)})}buildList();updateUI();
+</script>
+</body>
+</html>
